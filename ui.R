@@ -3,13 +3,8 @@
 list.of.packages = c("ggplot2","stats","data.table","parallel","stringr","rlist","circlize","splitstackshape","visNetwork","shiny","shinydashboard","RColorBrewer","ggvis","dplyr","shinycssloaders")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)>0){
-  Q <- 0
-  Q <- menu(c("Yes", "No"), title= paste0("Do you agree to install the following packages and their dependancies: ",
-                                          paste(new.packages, collapse = ", ") ))
-  if(Q==1){install.packages(new.packages, dependencies = TRUE)
-  }else{message("Required packages are not installed")
-        return() }
-  }
+  install.packages(new.packages, dependencies = TRUE)
+}
 
 
 library(ggplot2)
