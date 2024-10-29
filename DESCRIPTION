@@ -1,0 +1,32 @@
+Package: PRISMApp
+Type: Package
+Title: PRISM Shiny application
+Version: 1.0.0
+Authors@R: person("Martin", "Tournaire", email = "martin.tournaire@u-paris.fr",
+                  role = c("aut", "cre"))
+Description: Local version of PRISM Shiny application
+Encoding: UTF-8
+LazyData: true
+Imports:
+ ggplot2,
+ stats,
+ data.table,
+ parallel,
+ stringr,
+ rlist,
+ circlize,
+ splitstackshape,
+ visNetwork,
+ shiny,
+ shinydashboard,
+ RColorBrewer,
+ ggvis,
+ dplyr
+Depends: 
+    R (>= 2.10)
+RoxygenNote: 7.2.3
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+License: GPL (>= 3)
