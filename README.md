@@ -20,6 +20,7 @@ our [Shiny visualization tool](https://verbam01.shinyapps.io/PRISM/).
 The app can be launched locally from R using the following command:
 
 ``` r
-
 shiny::runGitHub(repo = "martintnr/PRISMApp", subdir = "")
 ```
+
+Please note that missing required packages will be installed.
