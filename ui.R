@@ -6,16 +6,17 @@ if(length(new.packages)>0){
   install.packages(new.packages, dependencies = TRUE)
 }
 
- library(shiny)
- library(shinydashboard)
- library(ggplot2)
- library(data.table)
- library(dplyr)
- library(circlize)
- library(ggvis)
- library(splitstackshape)
- library(visNetwork)
 
+library(shiny)
+library(shinydashboard)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(ggvis)
+library(circlize)
+library(splitstackshape)
+library(visNetwork)
+# library(shinycssloaders)
 
 ##############################################################################################################################
 ######################################################### Deployment #########################################################
@@ -85,7 +86,7 @@ shinyUI(dashboardPage(skin = "blue",
                                         solidHeader = TRUE,
                                         status = "primary",
                                         width = 12
-                                    )
+                                    ),
                                   ),
                                   fluidRow(
                                     column(width = 4, valueBox(61, HTML("UK Biobank traits"), icon = icon("medkit"), width = 12, color = "blue")),
@@ -123,7 +124,6 @@ shinyUI(dashboardPage(skin = "blue",
                                     )
                                   )
                           ),
-                          ##################################################################################################################################
                           tabItem(tabName = "TraitCau",
                                   h1("Visualization of the global pleiotropic relationships between traits"),
                                   br(), br(),
@@ -131,7 +131,8 @@ shinyUI(dashboardPage(skin = "blue",
                                     box(title = "Pleiotropic relationships between traits",
                                         # sliderInput("PvalCutoff", label = "", min = 10^-10, step = 10^-6, max = 0.05, value = 10^-5),
                                         # seq(from = 10^-10, to = 0.05, by = 10^-9)
-                                        imageOutput("TraitCausal", height = "1100px", width = "1100px") %>% withSpinner(color="#0dc5c1"),
+                                        img(src = "CircosPleiotropic relationships.jpeg", width = "100%", height = "auto"),
+                                        # imageOutput("TraitCausal", height = "1100px", width = "1100px") %>% withSpinner(color="#0dc5c1"),
                                         status = "primary",
                                         solidHeader = TRUE,
                                         width = 12
@@ -145,6 +146,7 @@ shinyUI(dashboardPage(skin = "blue",
                                   h1("Visualization of the pleiotropic network of a genetic variant"),
                                   br(), br(),
 
+
                                   fluidRow(
                                     box(
                                       title = "Select a chromosome and visualize the pleiotropy of the genetic variants",
@@ -156,7 +158,7 @@ shinyUI(dashboardPage(skin = "blue",
                                       status = "primary",
                                       solidHeader = TRUE,
                                       width = 12
-                                    )
+                                    ),
                                   ),
                                   fluidRow(
                                     uiOutput("VariantSelect"),
