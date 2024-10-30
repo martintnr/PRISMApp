@@ -1,17 +1,12 @@
-library(ggplot2)
-library(stats)
-library(data.table)
-library(parallel)
-library(stringr)
-library(rlist)
-library(circlize)
-library(splitstackshape)
-library(visNetwork)
 library(shiny)
 library(shinydashboard)
-library(RColorBrewer)
-library(ggvis)
+library(ggplot2)
+library(data.table)
 library(dplyr)
+library(circlize)
+library(ggvis)
+library(splitstackshape)
+library(visNetwork)
 
 source("www/ggcircos_helpers.R")
 
@@ -59,7 +54,7 @@ if(! file.exists("www/VariantListPleio_reduced.Rdata")){
     VariantListPleio_reduced <- lapply(VariantListPleio, function(dat) subset(dat, SNPid %in% VariantFileList_reduced))
     length(unique(unlist(lapply(VariantListPleio_reduced, `[`, 1))))
     save(VariantListPleio_reduced, file = "www/VariantListPleio_reduced.Rdata")
-    
+
     # set.seed(123)
     # Percent <- .01
     # VariantListPleio_reduced <- lapply(VariantListPleio, function(dat) dat[sample(1:nrow(dat), size = Percent*nrow(dat)), ])
@@ -67,7 +62,7 @@ if(! file.exists("www/VariantListPleio_reduced.Rdata")){
     load("www/VariantListPleio_reduced.Rdata")
 }
 
-RSIDs <- fread("www/Index_FULL.csv.gz", data.table = FALSE)
+RSIDs <- fread("www/Index_Shiny.csv", data.table = FALSE)
 
 ###########################################################################################################################################################################################
 ################################################################################ 0.2- Build PleioVar Network ##############################################################################
@@ -77,11 +72,11 @@ getVariantNetwork <- function(Vex){
 
     getNetwork <- function(VariantPleioResult, PleioType){
         PleioResultSub <- subset(VariantPleioResult, SynthPleio == PleioType)
-        
+
         # Direct effect
         if(PleioType == "No supplementary info" & any(PleioResultSub$SynthPleio == PleioType))
             Edges <- setnames(cbind.data.frame(PleioResultSub[, c("variant", "Trait1", "PvalPleioVar")], col = "#45709d"), c("from", "to", "value", "color"))
-        
+
         # Vertical effect
         if(PleioType == "Suspected Vertical Pleiotropy" & any(VariantPleioResult$SynthPleio == PleioType)) {
             Edges <- rbind.data.frame(
@@ -102,7 +97,7 @@ getVariantNetwork <- function(Vex){
         Edges$value <- -log10(as.numeric(Edges$value))
         return(Edges)
     }
-    
+
     # Get variant results
     FullPleio <- do.call("rbind", lapply(TopVariantsFiles[grep(Vex, VariantFileList)], function(file){
         cmd <- system(paste0("grep ", Vex, " www/Results_TopVar/", file), intern = TRUE)
@@ -114,13 +109,13 @@ getVariantNetwork <- function(Vex){
     }))
     FullPleio$FullPleio <- gsub("^[UV]:", "", FullPleio$FullPleio)
     FullPleio <- data.frame(cSplit(FullPleio, splitCols = "FullPleio", sep = ":", direction = "long", type.convert = TRUE))
-    
+
     # Get Network
     PleioNetEdges <- do.call("rbind", lapply(unique(FullPleio$SynthPleio), getNetwork, VariantPleioResult = FullPleio))
     PleioNetEdges <- unique(PleioNetEdges)
     # PleioNetEdges <- PleioNetEdges[order(PleioNetEdges$value, decreasing = TRUE), ]
     # PleioNetEdges <- PleioNetEdges[! duplicated(paste(PleioNetEdges$from, PleioNetEdges$to)), ]
-    
+
     # TraitDef <- fread("www/UKBB_TraitDef.txt", data.table = FALSE, select = c(1:3))
     Conf <- grep("U-", unique(unlist(PleioNetEdges[, c("from", "to")])), value = TRUE)
     TraitDefVex <- rbind.data.frame(TraitDef[, c(1, 3, 5, 2)], c(Category = "Variant", phenotype = Vex, description = Vex, color = "black"))
@@ -140,9 +135,9 @@ getVariantNetwork <- function(Vex){
         unlist(lapply(PleioNetNodesIt$id, function(trait){
             if(nrow(PleioNetEdges[PleioNetEdges$from %in% PleioNetNodesIt$id[! PleioNetNodesIt$group %in% c("Variant", "Confounder")] & PleioNetEdges$to == trait, ]) == 0)
                 return(trait)
-        })) 
+        }))
     }
-    
+
     # Step-by-step procedure to remove edges from the variant to the end traits
     Trait1 <- getEndTrait(PleioNetNodesIt = PleioNetNodes[! PleioNetNodes$group %in% c("Variant", "Confounder"), ], PleioNetEdges)
     DeconvIndices <- which(PleioNetEdges$from == Vex & PleioNetEdges$to %in% setdiff(PleioNetNodes$id[! PleioNetNodes$group %in% c("Variant", "Confounder")], Trait1))
@@ -151,7 +146,7 @@ getVariantNetwork <- function(Vex){
             # paste0("Trait", i, " <- getEndTrait(PleioNetNodesIt = PleioNetNodes[! PleioNetNodes$group %in% c('Variant', 'Confounder') & ! PleioNetNodes$id %in% c(", paste0("Trait", 1:(i-1), collapse = ", "), "), ], PleioNetEdges) ; DeconvIndices <- c(DeconvIndices, which(PleioNetEdges$from %in% c(Vex, ", paste0("Trait", 1:(i-1), collapse = ", "), ") & PleioNetEdges$to %in% setdiff(PleioNetNodes$id[! PleioNetNodes$group %in% c('Variant', 'Confounder')], c(", paste0("Trait", 1:i, collapse = ", "), "))))")
             paste0("Trait", i, " <- getEndTrait(PleioNetNodesIt = PleioNetNodes[! PleioNetNodes$group %in% c('Variant', 'Confounder') & ! PleioNetNodes$id %in% c(", paste0("Trait", 1:(i-1), collapse = ", "), "), ], PleioNetEdges) ;", paste0(lapply(1:(i-1), function(j) paste0("Trait", j, "Sub <- PleioNetEdges[which(PleioNetEdges$from %in% Trait", j, " & PleioNetEdges$to %in% Trait", i, "), 'from']")), collapse = ";"), "; DeconvIndices <- c(DeconvIndices, which(PleioNetEdges$from %in% c(Vex, ", paste0("Trait", 1:(i-1), "Sub", collapse = ", "), ") & PleioNetEdges$to %in% setdiff(PleioNetNodes$id[! PleioNetNodes$group %in% c('Variant', 'Confounder')], c(", paste0("Trait", 1:i, collapse = ", "), "))))")
         )
-        
+
         ########## Principle
             # Get end trait at step 3 for instance
         # Trait3 <- getEndTrait(PleioNetNodesIt = PleioNetNodes[! PleioNetNodes$group %in% c('Variant', 'Confounder') & ! PleioNetNodes$id %in% c(Trait1, Trait2), ], PleioNetEdges)
@@ -161,11 +156,11 @@ getVariantNetwork <- function(Vex){
             # Remove edges
         # DeconvIndices3 <- which(PleioNetEdges$from %in% c(Vex, Trait1Sub, Trait2Sub) & PleioNetEdges$to %in% setdiff(PleioNetNodes$id[! PleioNetNodes$group %in% c('Variant', 'Confounder')], c(Trait1, Trait2, Trait3)))
         ######################
-        
+
         eval(parse(text = paste(DeconvProcess, collapse = ";")))
         DeconvIndices <- unique(DeconvIndices)
         PleioNetEdgesDeconv <- PleioNetEdges[-DeconvIndices, ]
-        
+
         # Remove duplicated edges
         PleioNetEdgesDeconv <- PleioNetEdgesDeconv[order(PleioNetEdgesDeconv$value, decreasing = TRUE), ]
         PleioNetEdgesDeconv <- PleioNetEdgesDeconv[! duplicated(paste(PleioNetEdgesDeconv$from, PleioNetEdgesDeconv$to)), ]
@@ -222,12 +217,12 @@ radians_m <- create_radians(chroms, lengths)
 # showReactLog()
 
 shinyServer(function(input, output, session){
-    
-    
+
+
     #######################################################################################################################################################################################
     ###################################################################################### About tab ######################################################################################
     #######################################################################################################################################################################################
-    
+
     output$TournaireEtAl <- renderUI({
         tagList(a(
             "Tournaire et al. 2024.",
@@ -238,14 +233,14 @@ shinyServer(function(input, output, session){
     })
     output$github <- renderUI({
         tagList(a(
-            "martintnr/PRISM", 
+            "martintnr/PRISM",
             href = "https://github.com/martintnr/PleioVar",
             target = "_blank"
         ))
     })
     output$email <- renderUI({
         tagList(a(
-            h5("marie.verbanck [at] u-paris.fr"), 
+            h5("marie.verbanck [at] u-paris.fr"),
             href = "mailto:marie.verbanck@u-paris.fr")
         )
     })
@@ -256,7 +251,7 @@ shinyServer(function(input, output, session){
             target = "_blank")
         )
     })
-    
+
     output$AboutPage <- renderUI({
         tagList(
             a("Back to the about tab", onclick = "openTab('About')"),
@@ -275,35 +270,35 @@ shinyServer(function(input, output, session){
     #######################################################################################################################################################################################
     ############################################################################ A- Trait Causal relationships ############################################################################
     #######################################################################################################################################################################################
-    
+
     output$TraitCausal <- renderImage({
-    	
+
     	if(! file.exists("www/CircosPleiotropic relationships.jpeg")){
 	    	ALLCOUNT <- fread("www/TableT1_T2_PleioType_NbVariants.csv", data.table = FALSE)
 	    	ALLCOUNT$Trait1Explicit <- TraitDef$description_short[ match(ALLCOUNT$Trait1, TraitDef$phenotype) ]
 	    	ALLCOUNT$Trait2Explicit <- TraitDef$description_short[ match(ALLCOUNT$Trait2, TraitDef$phenotype) ]
-	    	
+
 	    	###Circos Plot
-	    	
+
 	    	grid.col <- TraitDef$Color
 	    	names(grid.col) <- TraitDef$description_short
-	    	
+
 	    	colors <- list(
-	    		"Detected Network Pleiotropy" = "#a23c33", 
+	    		"Detected Network Pleiotropy" = "#a23c33",
 	    		"Horizontal Pleiotropy" = "#45709d",
-	    		"Direct Effect" = "#29435e", 
-	    		"Suspected Vertical Pleiotropy" = "#82992a", 
+	    		"Direct Effect" = "#29435e",
+	    		"Suspected Vertical Pleiotropy" = "#82992a",
 	    		"Genome-wide Significant" = "#A9A9A9",
 	    		"No Effect" = "#D3D3D3"
 	    	)
-	    	
+
 	    	col_mat <- unlist((colors[ match(ALLCOUNT$`Type of Pleiotropy`, names(colors)) ]))
-	    	
+
 	    	pourcirc <- ALLCOUNT[,c("Trait1Explicit", "Trait2Explicit", "Number of variants")]
 	    	pourcirc$col_mat <- col_mat
-	    	
+
 	    	jpeg("www/CircosPleiotropic relationships.jpeg", width = 4800, height = 4800, quality = 100, pointsize = 90)
-	    	
+
 	    	circos.clear()
 	    	circos.par(gap.after = rep(0.5, nbTraits))
 	    	chordDiagram(
@@ -315,7 +310,7 @@ shinyServer(function(input, output, session){
 	    		direction.type = "arrows",link.arr.type = "big.arrow", link.arr.length = 0.2,
 	    		annotationTrack = c("grid"), annotationTrackHeight = c(0.35,0.1)
 	    	)
-	    	
+
 	    	circos.track(track.index = 1, panel.fun = function(x, y) {
 	    		xlim = get.cell.meta.data("xlim")
 	    		ylim = get.cell.meta.data("ylim")
@@ -324,21 +319,21 @@ shinyServer(function(input, output, session){
 	    	}, bg.border = NA)
     		dev.off()
     	}
-    	
+
 		list(src = "www/CircosPleiotropic relationships.jpeg",
 			contentType = 'image/png',
 			width = "100%",
 			height = "100%"
 		)
 	}, deleteFile = FALSE)
-    
+
     #######################################################################################################################################################################################
     ############################################################################# B- Chromosome Representation ############################################################################
     #######################################################################################################################################################################################
     re_values <- reactiveValues(
         scaling_factors = rep(1, 22),
         previous_radians = radians_f,
-        chrom_clicked = "1", 
+        chrom_clicked = "1",
         chroms_selected = NULL
     )
 
@@ -347,7 +342,7 @@ shinyServer(function(input, output, session){
             return(NULL)
         VariantList <- sort(grep(paste0("^", re_values$chroms_selected, "\\:"), as.character(unlist(lapply(VariantListPleio_reduced, `[[`, 1))), value = TRUE))
     })
-    
+
     radians <- reactive({
         rads <- create_radians(chroms, lengths * re_values$scaling_factors)
         isolate(mid <- mean(rads[names(rads) == re_values$chrom_clicked]))
@@ -355,20 +350,20 @@ shinyServer(function(input, output, session){
         offset <- mid - prev_mid
         rads - offset
     })
-    
+
     track_radians <- reactive({
         create_track_radians(radians(), points_per_track = rep(20, length(radians())))
     })
-    
+
     seq_df <- reactive({
         scale <- re_values$scaling_factors
         create_seq_df(radians(), scale = scale)
     })
-    
+
     snp_plot_data <- reactive({
         snp <- VariantListPleio_reduced[input$PleioType][[1]]
         snp <- snp[snp$`Number of pleiotropic assocations` > 1, ]
-        
+
         snp_data <- snp %>%
             group_by(
                 SNPid, chromosome, chromosome_start, chromosome_end, mutated_from_allele, mutated_to_allele
@@ -380,11 +375,11 @@ shinyServer(function(input, output, session){
         points$id <- paste0("snp", 1:nrow(points))
         points
     })
-    
+
     text_df <- reactive({
         seq_df() %>% mutate(theta = (seq_start + seq_end) / 2, r = 1.05)
     })
-    
+
     tooltip_fun <- function(data, session) {
         if ("id" %in% names(data)) {
             tt_data <- snp_plot_data()
@@ -397,41 +392,41 @@ shinyServer(function(input, output, session){
             )
         }
     }
-    
+
     # tooltip_click_fun <- function(data) {
     #   str(data)
     # }
-    
+
     click_handle <- function(data, location, session) {
         if (is.null(data)) {
             return(NULL)
         }
-        
+
         isolate(re_values$chrom_clicked <- data$group)
         isolate(re_values$previous_radians <- radians())
         isolate(re_values$scaling_factors[which(chroms == data$group)] <- ifelse(re_values$scaling_factors[which(chroms == data$group)] == 1, scalingFactor, 1))
         isolate(re_values$chroms_selected <- data$group)
         print(data)
     }
-    
+
     fill_range <- stroke_range <- c(
         # chromosome colours from Circos
         "#996600", "#666600", "#99991E", "#CC0000", "#FF0000", "#FF00CC", "#FFCCCC", "#FF9900", "#FFCC00",
         "#FFFF00", "#CCFF00", "#00FF00", "#358000", "#0000CC", "#6699FF", "#99CCFF", "#00FFFF", "#CCFFFF",
         "#9900CC", "#CC33FF", "#CC99FF", "#666666"
     )
-    
+
     fill_domain <- stroke_domain <- c(1:22)
-    
+
     add_tooltip <- function(vis, html, on = c("hover", "click")) {
         on <- match.arg(on)
-        
+
         show_tooltip2 <- function(data, location, session, ...) {
             if (is.null(data)) {
                 hide_tooltip(session)
                 return()
             }
-            
+
             html <- html(data)
             if (is.null(html)) {
                 hide_tooltip(session)
@@ -442,13 +437,13 @@ shinyServer(function(input, output, session){
         hide_tooltip2 <- function(session) {
             hide_tooltip(session)
         }
-        
+
         switch(on,
                click = handle_click(vis, show_tooltip2),
                hover = handle_hover(vis, show_tooltip2)
         )
     }
-    
+
     ggvis() %>%
         add_track(track_radians, 1, 0.9, fill = ~group, stroke = ~group, fillOpacity := 0.7, fillOpacity.hover := 1) %>%
         add_track(track_radians, 0.8, 0.6, strokeOpacity := 0.5, stroke := "black", strokeWidth := 0.5) %>%
@@ -456,7 +451,7 @@ shinyServer(function(input, output, session){
         # Layer with points
         layer_points(
             data = snp_plot_data, ~ sin(theta) * r, ~ cos(theta) * r, size := 10,
-            key := ~id, 
+            key := ~id,
             size.hover := 30, strokeOpacity.hover := 1, fill := reactive({as.character(PleioColors[input$PleioType])}),
             stroke := reactive({as.character(PleioColors[input$PleioType])}), strokeWidth := 0.5
         ) %>%
@@ -481,21 +476,21 @@ shinyServer(function(input, output, session){
     #######################################################################################################################################################################################
     ################################################################################### C- Variant network ################################################################################
     #######################################################################################################################################################################################
-    
+
     observeEvent(input$GoToFullResults, {
         updateTabItems(session, "tabs", "VariantNetFull")
     })
-    
+
     output$VariantSelect <- renderUI({
         VariantList <- VariantList()
-        
+
         if(is.null(VariantList))
             return(NULL)
         box(
             title = "Explore the network visualization for the selected genetic variant",
             selectizeInput("variant", label = "", choices = VariantList), # Set choices to null so that it load more quickly and then update selectizeInput in server with the choices
             status = "primary",
-            solidHeader = TRUE, 
+            solidHeader = TRUE,
             width = 8
         )
     })
@@ -505,28 +500,28 @@ shinyServer(function(input, output, session){
             return(NULL)
         valueBox(length(VariantList), paste("genetic variants in chromosome", re_values$chroms_selected), icon = icon("dna"), width = 4)
     })
-    
+
     output$VariantNetwork <- renderVisNetwork({
         Net <- getVariantNetwork(input$variant)
         if(is.null(Net))
             return(NULL)
-        visNetwork(Net$Nodes, Net$Edges, width = 300, height = 600) %>% 
+        visNetwork(Net$Nodes, Net$Edges, width = 300, height = 600) %>%
             visEdges(arrows = 'to', scaling = list(min = 2, max = 2)) %>%
             visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, selectedBy = "group")  %>%
             visLegend(useGroups = FALSE, addNodes = cbind.data.frame(setnames(unique(Net$Nodes[, c("group", "shape", "color")]), c("label", "shape", "color")), font.color = "lightgrey"))
     })
-    
+
     output$VariantNetworkDeconv <- renderVisNetwork({
         Net <- getVariantNetwork(input$variant)
         if(is.null(Net))
             return(NULL)
-        visNetwork(Net$Nodes, Net$EdgesDeconv, width = 300, height = 600) %>% 
+        visNetwork(Net$Nodes, Net$EdgesDeconv, width = 300, height = 600) %>%
             visEdges(arrows = 'to', scaling = list(min = 2, max = 2)) %>%
             visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, selectedBy = "group") %>%
             visLegend(useGroups = FALSE, addNodes = cbind.data.frame(setnames(unique(Net$Nodes[, c("group", "shape", "color")]), c("label", "shape", "color")), font.color = "lightgrey"))
     })
-    
-    
+
+
     output$VariantNetworkTabs <- renderUI({
         if(is.null(re_values$chroms_selected))
             return(NULL)
@@ -547,29 +542,29 @@ shinyServer(function(input, output, session){
         )
     })
 
-    #######################################################  
+    #######################################################
     output$VariantNetworkFull <- renderVisNetwork({
         if(! input$ManualVariant %in% AllVariants & ! input$ManualVariant %in% RSIDs$rsid )
             return(NULL)
     	variant <- ifelse(input$ManualVariant %in% AllVariants, input$ManualVariant, RSIDs$variant[RSIDs$rsid == input$ManualVariant])
     	Net <- getVariantNetwork(variant)
-        visNetwork(Net$Nodes, Net$Edges, width = 300, height = 600) %>% 
+        visNetwork(Net$Nodes, Net$Edges, width = 300, height = 600) %>%
             visEdges(arrows = 'to', scaling = list(min = 2, max = 2)) %>%
             visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, selectedBy = "group")  %>%
             visLegend(useGroups = FALSE, addNodes = cbind.data.frame(setnames(unique(Net$Nodes[, c("group", "shape", "color")]), c("label", "shape", "color")), font.color = "lightgrey"))
     })
-    
+
     output$VariantNetworkDeconvFull <- renderVisNetwork({
     	if(! input$ManualVariant %in% AllVariants & ! input$ManualVariant %in% RSIDs$rsid )
     		return(NULL)
     	variant <- ifelse(input$ManualVariant %in% AllVariants, input$ManualVariant, RSIDs$variant[RSIDs$rsid == input$ManualVariant])
     	Net <- getVariantNetwork(variant)
-    	visNetwork(Net$Nodes, Net$EdgesDeconv, width = 300, height = 600) %>% 
+    	visNetwork(Net$Nodes, Net$EdgesDeconv, width = 300, height = 600) %>%
             visEdges(arrows = 'to', scaling = list(min = 2, max = 2)) %>%
             visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, selectedBy = "group") %>%
             visLegend(useGroups = FALSE, addNodes = cbind.data.frame(setnames(unique(Net$Nodes[, c("group", "shape", "color")]), c("label", "shape", "color")), font.color = "lightgrey"))
     })
-    
+
     output$VariantNetworkTabsFull <- renderUI({
         if(! input$ManualVariant %in% AllVariants & ! input$ManualVariant %in% RSIDs$rsid ){
             infoBox(
@@ -598,5 +593,5 @@ shinyServer(function(input, output, session){
             )
         }
     })
-    
+
 })

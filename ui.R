@@ -1,27 +1,21 @@
 ### Packages check
 
-list.of.packages = c("ggplot2","stats","data.table","parallel","stringr","rlist","circlize","splitstackshape","visNetwork","shiny","shinydashboard","RColorBrewer","ggvis","dplyr","shinycssloaders")
+list.of.packages = c("shiny", "shinydashboard", "ggplot2", "data.table", "dplyr", "ggvis", "circlize", "splitstackshape", "visNetwork")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)>0){
   install.packages(new.packages, dependencies = TRUE)
 }
 
+ library(shiny)
+ library(shinydashboard)
+ library(ggplot2)
+ library(data.table)
+ library(dplyr)
+ library(circlize)
+ library(ggvis)
+ library(splitstackshape)
+ library(visNetwork)
 
-library(ggplot2)
-library(stats)
-library(data.table)
-library(parallel)
-library(stringr)
-library(rlist)
-library(circlize)
-library(splitstackshape)
-library(visNetwork)
-library(shiny)
-library(shinydashboard)
-library(RColorBrewer)
-library(ggvis)
-library(dplyr)
-library(shinycssloaders)
 
 ##############################################################################################################################
 ######################################################### Deployment #########################################################
