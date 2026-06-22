@@ -196,23 +196,23 @@ shinyServer(function(input, output, session){
     
     output$TournaireEtAl <- renderUI({
         tagList(a(
-            "Tournaire et al. 2024.",
+            "Tournaire et al. 2026.",
             # "Inferring genetic variant causal network by leveraging pleiotropy",
-            href = "https://www.medrxiv.org/content/10.1101/2024.06.01.24308193v1",
+            href = "https://www.medrxiv.org/content/10.1101/2024.06.01.24308193v4",
             target = "_blank"
         ))
     })
     output$github <- renderUI({
         tagList(a(
             "martintnr/PRISM", 
-            href = "https://github.com/martintnr/PleioVar",
+            href = "https://github.com/martintnr/PRISM",
             target = "_blank"
         ))
     })
     output$email <- renderUI({
         tagList(a(
-            h5("marie.verbanck [at] u-paris.fr"), 
-            href = "mailto:marie.verbanck@u-paris.fr")
+            h5("marie.verbanck [at] curie.fr"), 
+            href = "mailto:marie.verbanck@curie.fr")
         )
     })
     output$info <- renderUI({
